@@ -1,0 +1,40 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Книжная полка</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>📚 Книжная полка (CRUD)</h1>
+
+    <div class="form-container">
+        <h2>Добавить книгу</h2>
+        <form id="bookForm">
+            <input type="text" id="title" placeholder="Название" required>
+            <input type="text" id="author" placeholder="Автор" required>
+            <input type="number" id="year" placeholder="Год" required>
+            <button type="submit">Сохранить</button>
+            <button type="button" id="clearBtn">Очистить</button>
+        </form>
+    </div>
+
+    <h2>Список книг</h2>
+    <table id="bookTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Автор</th>
+                <th>Год</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody id="bookTableBody">
+            <!-- Книги появятся здесь -->
+        </tbody>
+    </table>
+
+    <script src="script.js"></script>
+</body>
+</html>
