@@ -1,4 +1,5 @@
-// leanbli - �������� ������� 03.02
+﻿// leanbli - Сидорова Варвара 03.02
+// Исправлено: работа с новым форматом API
 console.log("Script loaded successfully!");
 
 const API_URL = "http://localhost:5000/api/books";
@@ -15,8 +16,14 @@ async function loadBooks() {
             throw new Error(`Server error: ${response.status}`);
         }
 
-        const books = await response.json();
-        console.log("Books loaded:", books);
+        const data = await response.json();
+        console.log("API response:", data);
+
+        // 📌 ИСПРАВЛЕНИЕ: API возвращает {books: [...], count: ...}
+        // Извлекаем массив книг из ответа
+        const books = data.books || data;
+        console.log("Books extracted:", books);
+
         displayBooks(books);
 
     } catch (error) {
@@ -30,7 +37,7 @@ function displayBooks(books) {
     const tableBody = document.getElementById('bookTableBody');
     tableBody.innerHTML = '';
 
-    if (books.length === 0) {
+    if (!books || books.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="5">No books found. Add first!</td></tr>';
         return;
     }
@@ -43,7 +50,7 @@ function displayBooks(books) {
             <td>${book.author || '-'}</td>
             <td>${book.year || '-'}</td>
             <td>
-                <button onclick="editBook(${book.id})" style="background: orange;">Edit</button>
+                <button onclick="editBook(${book.id})" style="background: orange; margin-right: 5px;">Edit</button>
                 <button onclick="deleteBook(${book.id})" style="background: red; color: white;">Delete</button>
             </td>
         `;
@@ -56,8 +63,8 @@ document.getElementById('bookForm').addEventListener('submit', async function (e
     e.preventDefault();
 
     const bookData = {
-        title: document.getElementById('title').value,
-        author: document.getElementById('author').value,
+        title: document.getElementById('title').value.trim(),
+        author: document.getElementById('author').value.trim(),
         year: document.getElementById('year').value ? parseInt(document.getElementById('year').value) : null
     };
 
@@ -76,12 +83,13 @@ document.getElementById('bookForm').addEventListener('submit', async function (e
         });
 
         if (response.ok) {
-            alert("Book added successfully!");
+            const result = await response.json();
+            alert(`✅ ${result.message || 'Book added successfully!'}`);
             this.reset();
             loadBooks();
         } else {
             const error = await response.json();
-            alert(`Error: ${error.error || 'Unknown error'}`);
+            alert(`❌ Error: ${error.error || 'Unknown error'}`);
         }
 
     } catch (error) {
@@ -90,9 +98,9 @@ document.getElementById('bookForm').addEventListener('submit', async function (e
     }
 });
 
-// Delete book
+// Delete book - НУЖНО СОЗДАТЬ ЭНДПОИНТ DELETE НА БЭКЕНДЕ
 async function deleteBook(id) {
-    if (!confirm("Delete this book?")) return;
+    if (!confirm(`Delete book #${id}?`)) return;
 
     try {
         const response = await fetch(`${API_URL}/${id}`, {
@@ -100,59 +108,131 @@ async function deleteBook(id) {
         });
 
         if (response.ok) {
+            alert("✅ Book deleted!");
             loadBooks();
+        } else {
+            const error = await response.json();
+            alert(`❌ Error: ${error.error || 'Cannot delete book'}`);
         }
     } catch (error) {
         console.error("Error deleting book:", error);
+        alert("❌ Network error");
     }
 }
 
-// Edit book (simple version)
+// Edit book
 async function editBook(id) {
     try {
         const response = await fetch(`${API_URL}/${id}`);
+
+        if (!response.ok) {
+            throw new Error(`Failed to load book: ${response.status}`);
+        }
+
         const book = await response.json();
 
-        document.getElementById('title').value = book.title;
-        document.getElementById('author').value = book.author || '';
-        document.getElementById('year').value = book.year || '';
+        // 📌 ИСПРАВЛЕНИЕ: book может быть объектом или вложен в data
+        const bookData = book.book || book;
 
-        // Change button text
-        const saveBtn = document.querySelector('#bookForm button[type="submit"]');
-        saveBtn.textContent = 'Update';
-        saveBtn.onclick = async function (e) {
+        document.getElementById('title').value = bookData.title;
+        document.getElementById('author').value = bookData.author || '';
+        document.getElementById('year').value = bookData.year || '';
+
+        // Change button text and behavior
+        const form = document.getElementById('bookForm');
+        const submitBtn = document.querySelector('#bookForm button[type="submit"]');
+
+        submitBtn.textContent = 'Update';
+        submitBtn.dataset.editingId = id;
+
+        // Temporarily replace form handler
+        const originalSubmit = form.onsubmit;
+
+        form.onsubmit = async function (e) {
             e.preventDefault();
 
             const updatedData = {
-                title: document.getElementById('title').value,
-                author: document.getElementById('author').value,
+                title: document.getElementById('title').value.trim(),
+                author: document.getElementById('author').value.trim(),
                 year: document.getElementById('year').value ? parseInt(document.getElementById('year').value) : null
             };
 
-            const updateResponse = await fetch(`${API_URL}/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedData)
-            });
+            try {
+                const updateResponse = await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
 
-            if (updateResponse.ok) {
-                alert("Book updated!");
-                document.getElementById('bookForm').reset();
-                saveBtn.textContent = 'Save';
-                loadBooks();
+                if (updateResponse.ok) {
+                    alert("✅ Book updated!");
+                    form.reset();
+                    submitBtn.textContent = 'Save';
+                    form.onsubmit = originalSubmit;
+                    delete submitBtn.dataset.editingId;
+                    loadBooks();
+                } else {
+                    const error = await updateResponse.json();
+                    alert(`❌ Error: ${error.error || 'Update failed'}`);
+                }
+
+            } catch (error) {
+                console.error("Update error:", error);
+                alert("❌ Network error during update");
             }
         };
 
     } catch (error) {
         console.error("Error loading book for edit:", error);
+        alert("❌ Cannot load book for editing");
     }
 }
 
 // Clear form button
 document.getElementById('clearBtn').addEventListener('click', function () {
     document.getElementById('bookForm').reset();
-    const saveBtn = document.querySelector('#bookForm button[type="submit"]');
-    saveBtn.textContent = 'Save';
+    const submitBtn = document.querySelector('#bookForm button[type="submit"]');
+    submitBtn.textContent = 'Save';
+
+    // Reset edit mode if active
+    if (submitBtn.dataset.editingId) {
+        delete submitBtn.dataset.editingId;
+        // Restore original submit handler
+        document.getElementById('bookForm').onsubmit = async function (e) {
+            e.preventDefault();
+
+            const bookData = {
+                title: document.getElementById('title').value.trim(),
+                author: document.getElementById('author').value.trim(),
+                year: document.getElementById('year').value ? parseInt(document.getElementById('year').value) : null
+            };
+
+            if (!bookData.title) {
+                alert("Book title is required!");
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bookData)
+                });
+
+                if (response.ok) {
+                    alert("✅ Book added!");
+                    this.reset();
+                    loadBooks();
+                } else {
+                    const error = await response.json();
+                    alert(`❌ Error: ${error.error}`);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("❌ Network error");
+            }
+        };
+    }
 });
 
 // Load books on page load
@@ -162,6 +242,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Test server connection
     fetch(API_URL)
-        .then(r => console.log("Server connection:", r.ok ? "OK" : "FAILED"))
-        .catch(e => console.log("Server not available"));
+        .then(r => {
+            console.log("Server connection:", r.ok ? "✅ OK" : "❌ FAILED");
+            return r.json();
+        })
+        .then(data => console.log("Server response format:", data))
+        .catch(e => console.log("❌ Server not available:", e));
 });
