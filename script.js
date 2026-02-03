@@ -1,4 +1,4 @@
-// Bookshelf Frontend JavaScript
+// leanbli - Сидорова Варвара 03.02
 console.log("Script loaded successfully!");
 
 const API_URL = "http://localhost:5000/api/books";
