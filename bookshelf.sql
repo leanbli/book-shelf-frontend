@@ -1,29 +1,31 @@
--- Database: bookshelf
+-- Создание таблицы users
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- DROP DATABASE IF EXISTS bookshelf;
+-- Создание таблицы books
+CREATE TABLE IF NOT EXISTS books (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    author VARCHAR(100),
+    year INTEGER,
+    price NUMERIC(10, 2),
+    quantity INTEGER DEFAULT 1,
+    description TEXT,
+    user_id INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+Select * from books;
+-- Добавьте тестовые данные
+INSERT INTO users (username, email, password) 
+VALUES ('admin', 'admin@example.com', 'admin123')
+ON CONFLICT (username) DO NOTHING;
 
-CREATE DATABASE bookshelf
-    WITH
-    OWNER = postgres
-    ENCODING = 'UTF8'
-    LC_COLLATE = 'Russian_Russia.1251'
-    LC_CTYPE = 'Russian_Russia.1251'
-    LOCALE_PROVIDER = 'libc'
-    TABLESPACE = pg_default
-    CONNECTION LIMIT = -1
-    IS_TEMPLATE = False;
-
-Create table users(
-id_user serial primary key,
-first_name varchar (20),
-last_name varchar (20),
-login varchar (20),
-"password" varchar (30));
-
-Create table nomenclature(
-id_book serial primary key,
-name_book varchar(20),
-autor varchar (60),
-release_year int,
-id_creator int,
-constraint fk_creator foreign key (id_creator) references users (id_user) on delete set null);
+INSERT INTO books (title, author, year, price, user_id) VALUES
+('Война и мир', 'Лев Толстой', 1869, 500.00, 1),
+('1984', 'Джордж Оруэлл', 1949, 300.50, 1),
+('Мастер и Маргарита', 'Михаил Булгаков', 1967, 450.00, 1);
